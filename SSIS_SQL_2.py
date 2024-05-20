@@ -413,25 +413,62 @@ class App(Tk):
 
     def editcourse_confirm(self, courseedit, ccode, cname, course_window, initial_ccode):
         try:
+            # Retrieve the new course code and course name from the entry fields
+            new_ccode = ccode.get()
+            new_cname = cname.get()
+
+            # Check if the new course code already exists in the database, but is not the current course being edited
+            check_query = "SELECT COUNT(*) FROM Course WHERE coursecode = ? AND coursecode != ?"
+            mycursor.execute(check_query, (new_ccode, initial_ccode))
+            result = mycursor.fetchone()
+
+            if result[0] > 0:
+                # If the course code already exists, show a warning and do not proceed with the update
+                showwarning("Duplicate Course Code", "The course code that you entered already exists.")
+            else:
+                # Check if there are any students enrolled in the course being edited
+                student_check_query = "SELECT COUNT(*) FROM Student WHERE coursecode = ?"
+                mycursor.execute(student_check_query, (initial_ccode,))
+                student_result = mycursor.fetchone()
+
+                if student_result[0] > 0:
+                    # If there are students enrolled, show a warning and do not proceed with the update
+                    showwarning("Enrolled Students", "There are students enrolled in this course. Please unenroll them before editing the course.")
+                else:
+                    # Begin a transaction if no transaction is already in progress
+                    if not db.in_transaction:
+                        db.start_transaction()
+
+                    try:
+                        # Update the Course table
+                        update_course_query = "UPDATE Course SET coursecode = ?, course_name = ? WHERE coursecode = ?"
+                        mycursor.execute(update_course_query, (new_ccode, new_cname, initial_ccode))
+
+                        # Commit the transaction
+                        db.commit()
+
+                        showinfo("Success", f"'{initial_ccode}' has been successfully edited to '{new_ccode}'.")
+                        self.courseDisplay()  # Update the course display after successful edit
+
+                    except mysql.connector.Error as err:
+                        # Roll back the transaction if an error occurs
+                        db.rollback()
+                        showwarning("Error", f"Failed to update course. {err}")
+
+            # Focus back on the course window and destroy the edit course window
+            course_window.focus()
             courseedit.destroy()
 
-
-            ccode = ccode.get()
-            cname = cname.get()
-
-
-
-            sql_query = "UPDATE Course SET coursecode = ?, course_name = ? WHERE coursecode = ?"
-            courseholder = (ccode, cname, initial_ccode)
-            mycursor.execute(sql_query, courseholder)
-            db.commit()
-
-            showinfo("Success", f"'{initial_ccode}' has been successfully edited.")
+        except mysql.connector.errors.InterfaceError as e:
+            showwarning("Database Error", str(e))
             course_window.focus()
-            self.courseDisplay()
-        except mysql.connector.errors.InterfaceError:
-            showwarning("Invalid Input", "The course code that you entered already exists.")
+        except Exception as e:
+            showwarning("Error", str(e))
             course_window.focus()
+
+
+
+
 
     def delcourse(self, course_window):
         course_delete_warn = askyesno(title = "Delete?", message = "Are you sure you want to delete the selected row?")
@@ -443,19 +480,29 @@ class App(Tk):
         ccode = self.course_selected("<<TreeviewSelect>>")
         ccode = ccode[0]
 
+        # Update coursecode to NULL for students enrolled in the course being deleted
+        update_student_query = "UPDATE Student SET coursecode = NULL WHERE coursecode = ?"
+        mycursor.execute(update_student_query, (ccode,))
 
+        # Delete the course from the Course table
         sql_query = "DELETE FROM Course WHERE coursecode = ?"
         try:
             mycursor.execute(sql_query, (ccode,))
-        except:
-            mycursor.execute("DELETE FROM Student WHERE coursecode = ?", (ccode,))
-            mycursor.execute(sql_query, (ccode,))
-            self.update_list()
+            db.commit()
+        except mysql.connector.Error as err:
+            db.rollback()
+            showwarning("Error", f"Failed to delete course. {err}")
+
+        # Update any NULL coursecode values in the Student table to 'N/A'
+        update_null_coursecode_query = "UPDATE Student SET coursecode = 'N/A' WHERE coursecode IS NULL"
+        mycursor.execute(update_null_coursecode_query)
         db.commit()
 
         showinfo("Success", f"'{ccode}' has been successfully removed from the courses.")
         course_window.focus()
         self.courseDisplay()
+        self.update_list()
+
 
 
     def addcourse(self, course_window):
