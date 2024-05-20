@@ -81,6 +81,11 @@ values ("2020-0001","lebron james", "BSCS", "2nd Year", "male"),
 
 insert into Course
 values("BSCA", "bachelor of computer applications"),
-("BSCS", "bachelor of computer studies"),
+("BSIT", "bachelor of science in information technology"),
 ("BSCS", "Bachelor of science in computer studies"),
-("BSIS, Bachelor of science in information Systems");
+("BSIS", "Bachelor of science in information Systems"),
+("N/A", "N/A");
+
+SELECT * FROM Student
+WHERE coursecode = "BSCS";
+
