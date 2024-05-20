@@ -3,7 +3,7 @@ use mydb;
 create table Student(
 studentID varchar(50) primary key,
 studentName varchar (50) not null, 
-coursecode varchar(50) not null, 
+coursecode varchar(50), 
 year ENUM('1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', 'Irregular') NOT NULL,
 gender ENUM('Female', 'Male', 'Other') NOT NULL
 );
