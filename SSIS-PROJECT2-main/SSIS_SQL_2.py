@@ -296,6 +296,34 @@ class App(Tk):
 
         except TclError:
             pass
+    
+    def course_search_type(self, event): #ward1
+        cinput = self.cinput.get()
+        if cinput == '':
+            self.courseDisplay()
+        else:
+            search_display = []
+            self.course_treeview.selection_set()
+            cinput = "^" + cinput
+
+            sql_query = "SELECT * FROM Course WHERE coursecode REGEXP ?"
+
+            searchinput = [cinput, ]
+
+
+
+            mycursor.execute(sql_query, searchinput)
+            for x in mycursor:
+                search_display.append(x)
+
+
+            self.course_update(search_display)
+            try:
+                self.course_treeview.selection_set('I001')
+            except TclError:
+                pass
+
+        
 
 
     def course_window_init(self):
@@ -336,7 +364,11 @@ class App(Tk):
         Button(course_buttons_frame, text = "Add", relief=RAISED, fg="white", bg="#8E3E63", height = 1, width = 6, font=('Lucida Sans', "16", 'bold'), command = lambda: self.addcourse(course_window)).pack(padx = 10, pady = 20)
         Button(course_buttons_frame, text = "Edit", relief=RAISED, fg="white", bg="#8E3E63", height = 1, width = 6, font=('Lucida Sans', "16", 'bold'), command = lambda: self.editcourse(course_window)).pack(padx = 10, pady = 20)
         Button(course_buttons_frame, text = "Delete", relief=RAISED, fg="white", bg="#8E3E63", height = 1, width = 6, font=('Lucida Sans', "16", 'bold'), command = lambda: self.delcourse(course_window)).pack(padx = 10, pady = 20)
-        
+        course_search = Entry(course_buttons_frame, width = 5, font=('Lucida Sans', "16", 'bold'), textvariable = self.cinput)
+        course_search.pack(padx = 10, pady = 20)
+        Button(course_buttons_frame, text = "Search", relief=RAISED, fg="white", bg="#141d26", height = 1, width = 6, font=('Lucida Sans', "16", 'bold'), command = lambda: self.course_search_type("<KeyRelease>")).pack(padx = 10, pady = 20)
+
+        course_search.bind("<KeyRelease>", self.course_search_type)
 
         self.course_treeview.bind('<<TreeviewSelect>>', self.course_selected)
 
@@ -355,7 +387,17 @@ class App(Tk):
         for x in mycursor:
             course_list.append(x)
 
+        count = 1
+        for element in course_list:
+            rowid = 'I' + str('{:03}'.format(count))
+            self.course_treeview.insert('', END, iid=rowid, values=element)
+            count += 1
+     #Delete
+    def course_update(self, course_list):
 
+
+        for i in self.course_treeview.get_children():
+            self.course_treeview.delete(i)
 
 
         count = 1
@@ -363,7 +405,6 @@ class App(Tk):
             rowid = 'I' + str('{:03}'.format(count))
             self.course_treeview.insert('', END, iid=rowid, values=element)
             count += 1
-
 
     def course_selected(self, event):
         course_row = ''
